@@ -1,0 +1,14 @@
+{
+  "name": "elzzaim-store",
+  "version": "1.0.0",
+  "description": "Elzzaim Telecom — boutique en ligne (Ghardaïa)",
+  "main": "server.js",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}
