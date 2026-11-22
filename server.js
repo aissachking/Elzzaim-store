@@ -28,7 +28,8 @@ const DEFAULT_SETTINGS = {
   days_ar: "من السبت إلى الخميس", days_fr: "Du samedi au jeudi",
   hours_ar: "", hours_fr: "",
   announce_ar: "", announce_fr: "",
-  delivery: { enabled: false, default_price: 0, prices: {} }
+  delivery: { enabled: false, default_price: 0, prices: {} },
+  ads: []
 };
 
 const SEED_CATS = [
@@ -341,7 +342,11 @@ A.put("/settings", wrap(async (req, res) => {
   const cur = (await getSettings()).data, b = req.body || {}, next = { ...cur };
   for (const k of Object.keys(DEFAULT_SETTINGS)) {
     if (!(k in b)) continue;
-    if (k === "delivery") {
+    if (k === "ads") {
+      next.ads = (Array.isArray(b.ads) ? b.ads : []).slice(0, 6)
+        .map(a => ({ image: str(a && a.image, 300), link: str(a && a.link, 400), active: !!(a && a.active) }))
+        .filter(a => /^\/img\//.test(a.image));
+    } else if (k === "delivery") {
       const d = b.delivery || {}, prices = {};
       for (const [w, p] of Object.entries(d.prices || {})) { const n = int(p, null); if (n !== null && n >= 0) prices[String(int(w, 0))] = n; }
       next.delivery = { enabled: !!d.enabled, default_price: Math.max(0, int(d.default_price, 0)), prices };

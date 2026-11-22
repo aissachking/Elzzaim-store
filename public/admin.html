@@ -98,7 +98,7 @@ async function main() {
   $("#out").hidden = false;
   app.innerHTML = `<section class="page"><div class="wrap">
     <div class="stats" id="stats"></div>
-    <div class="tabs">${[["orders", "📦 الطلبات"], ["products", "🛍 المنتجات"], ["cats", "🏷 الأصناف"], ["services", "🛠 الخدمات"], ["settings", "⚙️ الإعدادات"]].map(([k, t]) => `<button class="chip ${tab === k ? "on" : ""}" data-tab="${k}">${t}</button>`).join("")}</div>
+    <div class="tabs">${[["orders", "📦 الطلبات"], ["products", "🛍 المنتجات"], ["ads", "📢 الإعلانات"], ["cats", "🏷 الأصناف"], ["services", "🛠 الخدمات"], ["settings", "⚙️ الإعدادات"]].map(([k, t]) => `<button class="chip ${tab === k ? "on" : ""}" data-tab="${k}">${t}</button>`).join("")}</div>
     <div id="body"></div></div></section>`;
   $$("[data-tab]").forEach(b => b.onclick = () => { tab = b.dataset.tab; $$("[data-tab]").forEach(x => x.classList.toggle("on", x === b)); paint(); });
   try { CATS = await api("/categories"); } catch { return; }
@@ -109,7 +109,7 @@ async function stats() {
   $("#stats").innerHTML = `<div class="st"><b style="color:var(--org)">${s.new_orders}</b><span>طلبات جديدة</span></div><div class="st"><b>${s.month_orders}</b><span>طلبات هذا الشهر</span></div>
     <div class="st"><b>${fmt(s.month_sales)}</b><span>مبيعات مُسلّمة (الشهر)</span></div><div class="st"><b>${s.products}</b><span>منتج${s.low_stock ? ` · <span style="color:#ff6b6b">${s.low_stock} مخزون منخفض</span>` : ""}</span></div>`;
 }
-function paint() { ({ orders, products, cats, services, settings })[tab](); }
+function paint() { ({ orders, products, ads, cats, services, settings })[tab](); }
 
 /* ---------- طلبات ---------- */
 async function orders() {
@@ -216,6 +216,33 @@ function editProduct(p) {
   };
 }
 
+/* ---------- إعلانات ---------- */
+async function ads() {
+  const s = await api("/settings").catch(() => null); if (!s) return;
+  let list = (s.ads || []).map(a => ({ ...a }));
+  const draw = () => {
+    $("#body").innerHTML = `<div class="glass" style="padding:14px;margin-bottom:12px;font-size:13.5px;line-height:1.8">
+      📐 الإعلان صورة <b>أفقية بمقاس 16:9</b> (مثلاً 1600×900). تظهر في أعلى الصفحة الرئيسية تحت الواجهة مباشرة، وإذا فعّلت أكثر من إعلان تتبدّل تلقائياً كل 5 ثوانٍ.<br>
+      💡 عند توليدها بالذكاء الاصطناعي أضف للبرومبت: <span dir="ltr" style="color:var(--org)">16:9 horizontal banner</span></div>
+      <button class="btn r full" id="addAd" ${list.length >= 6 ? "disabled" : ""}>＋ إضافة إعلان (${list.length}/6)</button>
+      <div class="list" style="margin-top:12px">${list.map((a, i) => `<div class="it">
+        <img src="${esc(a.image)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px">
+        <div class="sw">ظاهر في الموقع<input type="checkbox" data-act="${i}" ${a.active ? "checked" : ""}></div>
+        <label style="margin-top:0">رابط عند الضغط (اختياري)</label><input class="in" dir="ltr" data-link="${i}" value="${esc(a.link)}" placeholder="#/shop?cat=montres  أو  https://wa.me/213...">
+        <div style="display:flex;gap:6px;margin-top:10px">${i ? `<button class="btn l sm" data-up="${i}">⬆ تقديم</button>` : ""}<button class="btn l sm" data-chg="${i}">↻ تغيير الصورة</button><button class="btn l sm" data-del="${i}" style="margin-inline-start:auto;color:#ff6b6b">🗑 حذف</button></div></div>`).join("")}</div>
+      ${list.length ? `<button class="btn r full" id="saveAds" style="margin-top:14px">حفظ الإعلانات</button>` : `<div class="empty">لا توجد إعلانات — قسم الإعلان مخفي في الموقع</div>`}`;
+    $("#addAd").onclick = () => pickImages(false, u => { list.push({ image: u, link: "", active: true }); save(); });
+    $$("[data-act]").forEach(x => x.onchange = () => list[+x.dataset.act].active = x.checked);
+    $$("[data-link]").forEach(x => x.oninput = () => list[+x.dataset.link].link = x.value.trim());
+    $$("[data-del]").forEach(x => x.onclick = () => { if (confirm("حذف الإعلان؟")) { list.splice(+x.dataset.del, 1); save(); } });
+    $$("[data-up]").forEach(x => x.onclick = () => { const i = +x.dataset.up; [list[i - 1], list[i]] = [list[i], list[i - 1]]; draw(); });
+    $$("[data-chg]").forEach(x => x.onclick = () => pickImages(false, u => { list[+x.dataset.chg].image = u; draw(); }));
+    const sv = $("#saveAds"); if (sv) sv.onclick = save;
+  };
+  const save = async () => { try { const r = await send("/settings", "PUT", { ads: list }); list = r.ads; toast("تم الحفظ ✓"); draw(); } catch { toast("خطأ"); } };
+  draw();
+}
+
 /* ---------- أصناف ---------- */
 async function cats() {
   CATS = await api("/categories").catch(() => CATS);
@@ -288,7 +315,7 @@ async function settings() {
     <div class="row2">${fld("city_ar", "المدينة (ع)")}${fld("city_fr", "Ville (fr)", "ltr")}</div>
     <div class="row2">${fld("days_ar", "أيام العمل (ع)")}${fld("days_fr", "Jours (fr)", "ltr")}</div>
     <div class="row2">${fld("hours_ar", "الساعات (ع) — اتركه فارغاً لإخفائه")}${fld("hours_fr", "Horaires (fr)", "ltr")}</div>
-    <h3 style="margin-top:20px">📢 إعلان أعلى الصفحة (اختياري)</h3>
+    <h3 style="margin-top:20px">📝 شريط نصي أعلى الصفحة (اختياري)</h3>
     ${fld("announce_ar", "الإعلان بالعربية")}${fld("announce_fr", "Annonce (fr)", "ltr")}
     <h3 style="margin-top:20px">🚚 أسعار التوصيل</h3>
     <div class="sw">تفعيل أسعار التوصيل في الموقع<input type="checkbox" id="den" ${d.enabled ? "checked" : ""}></div>

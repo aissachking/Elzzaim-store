@@ -33,7 +33,8 @@ const T = {
     thanks: "شكراً! تم استلام طلبك", thanksP: n => `رقم طلبك #${n}. سنتصل بك قريباً لتأكيده.`, thanksWa: "أكّد عبر واتساب", back: "العودة للمتجر",
     da: "دج", notFound: "الصفحة غير موجودة", days: "أيام العمل", waHello: "السلام عليكم، ",
     waAsk: s => `السلام عليكم، أريد معرفة سعر: ${s}`, waProduct: (n, p) => `السلام عليكم، أريد طلب: ${n} — ${p}`,
-    waOrder: id => `السلام عليكم، قمت بالطلب رقم #${id} من الموقع، أرجو التأكيد.`, rights: "جميع الحقوق محفوظة", scroll: "مرّر"
+    waOrder: id => `السلام عليكم، قمت بالطلب رقم #${id} من الموقع، أرجو التأكيد.`, rights: "جميع الحقوق محفوظة", scroll: "مرّر",
+    allA: "كل إكسسوارات هاتفك", allB: "في مكان واحد", allP: "سماعات، ساعات ذكية، مكبرات صوت، شواحن وأكثر — مختارة بعناية في محلنا بغرداية."
   },
   fr: {
     home: "Accueil", shop: "Boutique", cats: "Catégories", services: "Services", contact: "Contact", cart: "Panier",
@@ -55,7 +56,8 @@ const T = {
     thanks: "Merci ! Commande reçue", thanksP: n => `Commande n° ${n}. Nous vous appelons bientôt pour confirmer.`, thanksWa: "Confirmer sur WhatsApp", back: "Retour à la boutique",
     da: "DA", notFound: "Page introuvable", days: "Jours d'ouverture", waHello: "Bonjour, ",
     waAsk: s => `Bonjour, je voudrais connaître le prix : ${s}`, waProduct: (n, p) => `Bonjour, je souhaite commander : ${n} — ${p}`,
-    waOrder: id => `Bonjour, j'ai passé la commande n° ${id} sur le site, merci de confirmer.`, rights: "Tous droits réservés", scroll: "Défiler"
+    waOrder: id => `Bonjour, j'ai passé la commande n° ${id} sur le site, merci de confirmer.`, rights: "Tous droits réservés", scroll: "Défiler",
+    allA: "Tous vos accessoires", allB: "au même endroit", allP: "Écouteurs, montres connectées, enceintes, chargeurs et plus — sélectionnés dans notre boutique de Ghardaïa."
   }
 };
 const WILAYAS = [["أدرار","Adrar"],["الشلف","Chlef"],["الأغواط","Laghouat"],["أم البواقي","Oum El Bouaghi"],["باتنة","Batna"],["بجاية","Béjaïa"],["بسكرة","Biskra"],["بشار","Béchar"],["البليدة","Blida"],["البويرة","Bouira"],["تمنراست","Tamanrasset"],["تبسة","Tébessa"],["تلمسان","Tlemcen"],["تيارت","Tiaret"],["تيزي وزو","Tizi Ouzou"],["الجزائر","Alger"],["الجلفة","Djelfa"],["جيجل","Jijel"],["سطيف","Sétif"],["سعيدة","Saïda"],["سكيكدة","Skikda"],["سيدي بلعباس","Sidi Bel Abbès"],["عنابة","Annaba"],["قالمة","Guelma"],["قسنطينة","Constantine"],["المدية","Médéa"],["مستغانم","Mostaganem"],["المسيلة","M'Sila"],["معسكر","Mascara"],["ورقلة","Ouargla"],["وهران","Oran"],["البيض","El Bayadh"],["إليزي","Illizi"],["برج بوعريريج","Bordj Bou Arréridj"],["بومرداس","Boumerdès"],["الطارف","El Tarf"],["تندوف","Tindouf"],["تيسمسيلت","Tissemsilt"],["الوادي","El Oued"],["خنشلة","Khenchela"],["سوق أهراس","Souk Ahras"],["تيبازة","Tipaza"],["ميلة","Mila"],["عين الدفلى","Aïn Defla"],["النعامة","Naâma"],["عين تموشنت","Aïn Témouchent"],["غرداية","Ghardaïa"],["غليزان","Relizane"],["تيميمون","Timimoun"],["برج باجي مختار","Bordj Badji Mokhtar"],["أولاد جلال","Ouled Djellal"],["بني عباس","Béni Abbès"],["عين صالح","In Salah"],["عين قزام","In Guezzam"],["تقرت","Touggourt"],["جانت","Djanet"],["المغير","El M'Ghair"],["المنيعة","El Meniaa"]];
@@ -76,6 +78,20 @@ const waLink = text => `https://wa.me/${intl(S("whatsapp") || S("phone"))}?text=
 const telLink = () => `tel:${S("phone")}`;
 const catById = id => SITE.categories.find(c => c.id === id);
 const imgOf = p => p.images && p.images[0];
+const isCut = u => /-cut\.(webp|png)(\?|$)/.test(u || "");
+/* détecte une image détourée (coins transparents) envoyée depuis l'admin */
+function detectCut(img, el) {
+  const run = () => {
+    try {
+      const c = document.createElement("canvas"); c.width = c.height = 16;
+      const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, 16, 16);
+      const d = x.getImageData(0, 0, 16, 16).data, a = i => d[i * 4 + 3];
+      if (a(0) < 20 && a(15) < 20 && a(240) < 20 && a(255) < 20) el.classList.add("cut");
+    } catch {}
+  };
+  img.complete && img.naturalWidth ? run() : img.addEventListener("load", run, { once: true });
+}
+function watchCuts(root = document) { $$("img[data-cut]", root).forEach(i => { if (!i.dataset.done) { i.dataset.done = 1; detectCut(i, i.closest(i.dataset.cut)); } }); }
 const phBox = w => `<div class="ph">${esc(w || "ELZZAIM")}</div>`;
 
 async function api(path, opts = {}) {
@@ -164,8 +180,8 @@ function bindCards(root, list) {
   if (matchMedia("(pointer:fine)").matches) $$(".pc", root).forEach(el => tilt(el, 8));
 }
 function catTile(c, i) {
-  return `<a class="cat rv r3 d${i % 4}" href="#/shop?cat=${encodeURIComponent(c.slug)}">
-    <img loading="lazy" src="${esc(c.image)}" alt=""><span class="w">${esc(c.word)}</span>
+  return `<a class="cat rv r3 d${i % 4} ${isCut(c.image) ? "cut" : ""}" href="#/shop?cat=${encodeURIComponent(c.slug)}" style="--d:${(i % 5) * -1.3}s">
+    <img loading="lazy" src="${esc(c.image)}" alt="" data-cut=".cat"><span class="w">${esc(c.word)}</span>
     <div><h3>${esc(nm(c))}</h3><small>${c.count ? L.products(c.count) : L.soon}</small></div></a>`;
 }
 function bandHTML(items, cls = "") {
@@ -189,15 +205,16 @@ async function pageHome() {
   const im = i => pick[i] ? pick[i].image : "/img/shop.webp";
   const repair = SITE.services.filter(s => s.kind === "repair"), flexy = SITE.services.filter(s => s.kind === "flexy");
   const announce = lang === "fr" ? S("announce_fr") : S("announce_ar");
+  const ads = (SITE.settings.ads || []).filter(a => a.active && a.image);
 
   app.innerHTML = `
   <section class="hero">
     <div class="giant stroke w1" data-par="-.25">ZAIME</div>
     <div class="giant stroke w2" data-par=".18">TELECOM</div>
     <div class="hero-stage stage">
-      <div class="c3d hc2" data-hc="2" style="background-image:url('${im(1)}')"><div class="shine"></div></div>
-      <div class="c3d hc3" data-hc="3" style="background-image:url('${im(2)}')"><div class="shine"></div></div>
-      <div class="c3d hc1" data-hc="1" style="background-image:url('${im(0)}')"><div class="shine"></div></div>
+      <div class="c3d hc2 ${isCut(im(1)) ? "cut" : ""}" data-hc="2"><img src="${im(1)}" alt="" data-cut=".c3d"><div class="shine"></div></div>
+      <div class="c3d hc3 ${isCut(im(2)) ? "cut" : ""}" data-hc="3"><img src="${im(2)}" alt="" data-cut=".c3d"><div class="shine"></div></div>
+      <div class="c3d hc1 ${isCut(im(0)) ? "cut" : ""}" data-hc="1"><img src="${im(0)}" alt="" data-cut=".c3d"><div class="shine"></div></div>
     </div>
     <div class="wrap hero-txt chs">
       ${announce ? `<div class="notice rv" style="margin-bottom:14px">${esc(announce)}</div>` : ""}
@@ -209,6 +226,11 @@ async function pageHome() {
     <div class="scroll-cue" aria-label="${L.scroll}"></div>
   </section>
 
+  ${ads.length ? `<section class="ads" id="ads"><div class="wrap"><div class="stage"><div class="ad-card c3d" id="adCard">
+    ${ads.map((a, i) => `<a class="ad-slide ${i ? "" : "on"}" ${a.link ? `href="${esc(a.link)}" ${/^https?:/.test(a.link) ? 'target="_blank" rel="noopener"' : ""}` : ""}><img src="${esc(a.image)}" alt="" ${i ? 'loading="lazy"' : ""}></a>`).join("")}
+    <div class="shine"></div></div></div>
+    ${ads.length > 1 ? `<div class="dots" id="adDots">${ads.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}</div></section>` : ""}
+
   <div class="band-wrap" aria-hidden="true">
     ${bandHTML(["GHARDAÏA", ...cats.slice(0, 6).map(c => c.word), "FLEXY"], "b2")}
     ${bandHTML(cats.slice(0, 8).map(c => nm(c)))}
@@ -218,7 +240,7 @@ async function pageHome() {
     <div class="show-bg"></div>
     <div class="wrap show-top"><div style="display:flex;justify-content:space-between;align-items:center"><span class="kick">${L.catKick}</span><span class="btn l sm" id="showCount"></span></div></div>
     <div class="giant show-word" id="showWord"></div>
-    <div class="show-stage stage"><div class="c3d show-card" id="showCard"><div class="shine"></div></div></div>
+    <div class="show-stage stage"><div class="c3d show-card" id="showCard"><img id="showImg" alt=""><div class="shine"></div></div></div>
     <div class="wrap show-txt">
       <h2 class="h2" id="showName"></h2>
       <p class="mut" id="showSub" style="margin:2px 0 16px"></p>
@@ -237,6 +259,14 @@ async function pageHome() {
   <section class="sec" style="padding-top:40px"><div class="wrap"><div class="perks">
     ${L.perks.map((p, i) => `<div class="perk rv r3 d${i}">${ico(p[0])}<b>${p[1]}</b><span>${p[2]}</span></div>`).join("")}
   </div></div></section>
+
+  <section class="sec all-in"><div class="wrap">
+    <div class="stage"><div class="c3d all-card" id="allCard"><img src="/img/accessoires.webp" alt="" loading="lazy"><div class="shine"></div></div></div>
+    <div class="all-txt chs"><div class="kick rv">Elzzaim Telecom</div>
+      <h2 class="h2">${words(L.allA)} <span class="grad">${words(L.allB)}</span></h2>
+      <p class="mut rv d2" style="margin:8px 0 18px">${L.allP}</p>
+      <a class="btn r rv d3" href="#/shop">${L.shopNow} ${ico("i-arrow", "arr")}</a></div>
+  </div></section>
 
   <section class="sec" id="services"><div class="wrap">
     <div class="kick rv">${L.whatWe}</div>
@@ -279,16 +309,33 @@ async function pageHome() {
 
   /* vitrine */
   if (cats.length) initShowcase(cats);
+  if (ads.length) initAds(ads.length);
+  const allCard = $("#allCard");
+  tilt(allCard, 10);
+  scroller(allCard, (y, r, vh) => { const k = (r.top + r.height / 2 - vh / 2) / vh; allCard.style.transform = `rotateX(${k * 22}deg) rotateY(${gyro.x * 8}deg) scale(${1 - Math.abs(k) * .08})`; allCard.querySelector("img").style.transform = `scale(1.15) translateY(${k * 40}px)`; });
   tilt($("#shopCard"), 10);
   scroller($("#shopCard"), (y, r, vh) => { const k = (r.top + r.height / 2 - vh / 2) / vh; $("#shopCard").style.transform = `rotateX(${14 + k * 20}deg) rotateY(${gyro.x * 6}deg)`; });
 
-  reveal();
+  reveal(); watchCuts(app);
   /* produits vedettes */
   try {
     let list = await api("/api/products?featured=1&limit=8");
     if (list.length < 4) list = await api("/api/products?limit=8");
     if (list.length) { $("#featSec").hidden = false; const g = $("#feat"); g.innerHTML = list.map(productCard).join(""); bindCards(g, list); reveal(g); }
   } catch {}
+}
+
+function initAds(n) {
+  const card = $("#adCard"), slides = $$(".ad-slide", card), dots = $$("#adDots i");
+  let i = 0, timer;
+  const show = k => { i = (k + n) % n; slides.forEach((s, j) => s.classList.toggle("on", j === i)); dots.forEach((d, j) => d.classList.toggle("on", j === i)); };
+  const auto = () => { clearInterval(timer); if (n > 1) timer = setInterval(() => { if (document.visibilityState === "visible") show(i + 1); }, 5000); };
+  auto(); tilt(card, 10);
+  let sx = null;
+  card.addEventListener("touchstart", e => sx = e.touches[0].clientX, { passive: true });
+  card.addEventListener("touchend", e => { if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) { show(i + ((dx < 0) === (lang === "ar") ? -1 : 1)); auto(); } sx = null; });
+  scroller(card, (y, r, vh) => { const k = (r.top + r.height / 2 - vh / 2) / vh; card.style.transform = `rotateX(${k * 18}deg) rotateY(${gyro.x * 8}deg)`; });
+  cleanups.push(() => clearInterval(timer));
 }
 
 function initShowcase(cats) {
@@ -298,7 +345,9 @@ function initShowcase(cats) {
     sec.style.setProperty("--sc", TINTS[i % TINTS.length]);
     $("#showWord").textContent = c.word || "";
     $("#showWord").style.fontSize = `min(${Math.min(36, 160 / Math.max((c.word || "").length, 3))}vw, 380px)`;
-    $("#showCard").style.backgroundImage = `url('${c.image}')`;
+    $("#showImg").src = c.image;
+    $("#showCard").classList.toggle("cut", isCut(c.image));
+    if (!isCut(c.image)) detectCut($("#showImg"), $("#showCard"));
     $("#showName").textContent = nm(c);
     $("#showSub").textContent = c.count ? L.products(c.count) : L.soon;
     $("#showCount").textContent = L.products(SITE.productCount);
